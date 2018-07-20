@@ -5,13 +5,26 @@
       tags: [sysinfo]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: >-
           {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
+      register: sysinfo_job
+      async: 600
+      poll: 0
+
+    - name: wait for job (sysinfo)
+      tags: [sysinfo]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ sysinfo_job.ansible_job_id }}"
       register: sysinfo_out
+      until: sysinfo_out.finished
+      delay: 6
+      retries: 100
 
     - name: set sysinfo fact
       tags: [sysinfo]
@@ -22,25 +35,52 @@
       tags: [net]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: >-
           {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/EthernetInterfaces
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
+      register: interface_list_job
+      async: 600
+      poll: 0
+
+    - name: wait for job (interface list)
+      tags: [net]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ interface_list_job.ansible_job_id }}"
       register: interface_list
+      until: interface_list.finished
+      delay: 6
+      retries: 100
 
     - name: get ethernet interface details
       tags: [net]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
-      register: interface_details
+      register: interface_details_job
       with_items: "{{ interface_list.json.Members }}"
+      async: 600
+      poll: 0
+
+    - name: wait for job (interface details)
+      tags: [net]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: interface_details
+      until: interface_details.finished
+      delay: 6
+      retries: 100
+      with_items: "{{ interface_details_job.results }}"
 
     - name: set interfaces fact
       tags: [net]
@@ -51,38 +91,79 @@
       tags: [storage]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: >-
           {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/Storage
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
+      register: storage_adapters_job
+      async: 600
+      poll: 0
+
+    - name: wait for job (storage adapters)
+      tags: [storage]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ storage_adapters_job.ansible_job_id }}"
       register: storage_adapters
+      until: storage_adapters.finished
+      delay: 6
+      retries: 100
 
     - name: get storage adapter details
       tags: [storage]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
-      register: storage_adapter_details
+      register: storage_adapter_details_job
       with_items: "{{ storage_adapters.json.Members }}"
+      async: 600
+      poll: 0
+
+    - name: wait for job (storage adapter details)
+      tags: [storage]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: storage_adapter_details
+      until: storage_adapter_details.finished
+      delay: 6
+      retries: 100
+      with_items: "{{ storage_adapter_details_job.results }}"
 
     - name: get drives
       tags: [storage]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
-      register: storage_drives
+      register: storage_drives_job
       with_items: >-
         {{ storage_adapter_details.results|map(attribute='json.Drives')|list }}
+      async: 600
+      poll: 0
+
+    - name: wait for job (drives)
+      tags: [storage]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: storage_drives
+      until: storage_drives.finished
+      delay: 6
+      retries: 100
+      with_items: "{{ storage_drives_job.results }}"
 
     - name: set drives fact
       tags: [storage]
@@ -93,24 +174,51 @@
       tags: [firmware]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: "{{ redfish_endpoint }}/redfish/v1/UpdateService/FirmwareInventory"
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
+      register: firmware_inventory_job
+      async: 600
+      poll: 0
+
+    - name: wait for job (firmware inventory)
+      tags: [firmware]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ firmware_inventory_job.ansible_job_id }}"
       register: firmware_inventory
+      until: firmware_inventory.finished
+      delay: 6
+      retries: 100
 
     - name: get firmware details
       tags: [firmware]
       delegate_to: localhost
       uri:
+        timeout: 60
         url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
         user: "{{ rf_user }}"
         password: "{{ rf_pass }}"
         return_content: true
         validate_certs: false
-      register: firmware_details
+      register: firmware_details_job
       with_items: "{{ firmware_inventory.json.Members }}"
+      async: 600
+      poll: 0
+
+    - name: wait for job (firmware details)
+      tags: [firmware]
+      delegate_to: localhost
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: firmware_details
+      until: firmware_details.finished
+      delay: 6
+      retries: 100
+      with_items: "{{ firmware_details_job.results }}"
 
     - name: set firmware fact
       tags: [firmware]
