@@ -26,8 +26,16 @@ ID | MAC | State
 ID | Capacity | Manufacturer | Model
 ---|----------|--------------|------
 {% for drive in drives %}
-|{{ drive.Id }}|{{ drive.CapacityBytes/1024/1024/1024 }}|{{
+{{ drive.Id }}|{{ drive.CapacityBytes/1024/1024/1024 }}|{{
 drive.Manufacturer }}|{{ drive.Model }}
+{% endfor %}
+
+{% set firmware = inventory[host].firmware %}
+### All firmware ({{ firmware|length }})
+Name | Version
+-----|--------
+{% for f in firmware %}
+{{ f.Name }}|{{ f.Version }}
 {% endfor %}
 
 {% endif %}

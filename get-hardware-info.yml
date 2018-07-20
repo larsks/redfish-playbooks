@@ -89,6 +89,34 @@
       set_fact:
         drives: "{{ storage_drives.results|map(attribute='json')|list }}"
 
+    - name: get firmware inventory
+      tags: [firmware]
+      delegate_to: localhost
+      uri:
+        url: "{{ redfish_endpoint }}/redfish/v1/UpdateService/FirmwareInventory"
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: firmware_inventory
+
+    - name: get firmware details
+      tags: [firmware]
+      delegate_to: localhost
+      uri:
+        url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: firmware_details
+      with_items: "{{ firmware_inventory.json.Members }}"
+
+    - name: set firmware fact
+      tags: [firmware]
+      set_fact:
+        firmware: "{{ firmware_details.results|map(attribute='json')|list }}"
+
 - hosts: localhost
   gather_facts: false
   tasks:
@@ -99,6 +127,7 @@
             'sysinfo': hostvars[item].sysinfo,
             'interfaces': hostvars[item].interfaces,
             'drives': hostvars[item].drives,
+            'firmware': hostvars[item].firmware,
           }}) }}
       when: >-
         'sysinfo' in hostvars[item]
