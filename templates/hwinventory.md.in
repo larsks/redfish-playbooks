@@ -1,0 +1,33 @@
+# Hosts
+
+{% for host in groups.idrac %}
+{% if host in inventory %}
+{% set sysinfo = inventory[host].sysinfo %}
+## {{ host }}
+
+   |
+---|---
+Model:|{{ sysinfo.Model }}
+Service tag:|{{ sysinfo.SKU }}
+BIOS Version:|{{ sysinfo.BiosVersion }}
+Memory:|{{ sysinfo.MemorySummary.TotalSystemMemoryGiB|int }}
+Processors:|{{ sysinfo.ProcessorSummary.Count }} x {{ sysinfo.ProcessorSummary.Model }}
+
+{% set interfaces = inventory[host].interfaces %}
+### Interfaces ({{ interfaces|length }})
+ID | MAC
+---|----
+{% for interface in interfaces %}
+{{ interface.Id }}|{{ interface.MACAddress }}
+{% endfor %}
+
+{% set drives = inventory[host].drives %}
+### Drives ({{ drives|length }})
+ID | Capacity
+---|---------
+{% for drive in drives %}
+|{{ drive.Id }}|{{ drive.CapacityBytes/1024/1024/1024 }}
+{% endfor %}
+
+{% endif %}
+{% endfor %}

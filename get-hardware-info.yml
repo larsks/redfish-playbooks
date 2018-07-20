@@ -1,0 +1,109 @@
+- hosts: idrac
+  gather_facts: false
+  tasks:
+    - name: get system info
+      tags: [sysinfo]
+      delegate_to: localhost
+      uri:
+        url: >-
+          {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: sysinfo_out
+
+    - name: set sysinfo fact
+      tags: [sysinfo]
+      set_fact:
+        sysinfo: "{{ sysinfo_out.json }}"
+
+    - name: get ethernet interface list
+      tags: [net]
+      delegate_to: localhost
+      uri:
+        url: >-
+          {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/EthernetInterfaces
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: interface_list
+
+    - name: get ethernet interface details
+      tags: [net]
+      delegate_to: localhost
+      uri:
+        url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: interface_details
+      with_items: "{{ interface_list.json.Members }}"
+
+    - name: set interfaces fact
+      tags: [net]
+      set_fact:
+        interfaces: "{{ interface_details.results|map(attribute='json')|list }}"
+
+    - name: get storage adapters
+      tags: [storage]
+      delegate_to: localhost
+      uri:
+        url: >-
+          {{ redfish_endpoint }}/redfish/v1/Systems/System.Embedded.1/Storage
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: storage_adapters
+
+    - name: get storage adapter details
+      tags: [storage]
+      delegate_to: localhost
+      uri:
+        url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: storage_adapter_details
+      with_items: "{{ storage_adapters.json.Members }}"
+
+    - name: get drives
+      tags: [storage]
+      delegate_to: localhost
+      uri:
+        url: "{{ redfish_endpoint }}{{ item['@odata.id'] }}"
+        user: "{{ rf_user }}"
+        password: "{{ rf_pass }}"
+        return_content: true
+        validate_certs: false
+      register: storage_drives
+      with_items: >-
+        {{ storage_adapter_details.results|map(attribute='json.Drives')|list }}
+
+    - name: set drives fact
+      tags: [storage]
+      set_fact:
+        drives: "{{ storage_drives.results|map(attribute='json')|list }}"
+
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - set_fact:
+        inventory: >-
+          {{ (inventory|default({}))|combine({
+          item: {
+            'sysinfo': hostvars[item].sysinfo,
+            'interfaces': hostvars[item].interfaces,
+            'drives': hostvars[item].drives,
+          }}) }}
+      when: >-
+        'sysinfo' in hostvars[item]
+      with_items: "{{ groups.idrac }}"
+
+    - copy:
+        dest: ./inventory.json
+        content: "{{ inventory|to_nice_json }}"

@@ -1,0 +1,14 @@
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - set_fact:
+        inventory: "{{ lookup('file', 'inventory.json')|from_json }}"
+
+    - template:
+        src: templates/hwinventory.md.in
+        dest: ./hwinventory.md
+      register: markdown
+
+    - command: >-
+        pandoc -s hwinventory.md -o hwinventory.html --toc --css css/github-pandoc.css
+      when: markdown is changed or force_template|default(false)|bool
