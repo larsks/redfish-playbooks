@@ -1,4 +1,4 @@
-# Hosts
+# Hosts ({{ (inventory)|length }})
 
 {% for host in groups.idrac %}
 {% if host in inventory %}
@@ -8,25 +8,26 @@
    |
 ---|---
 Model:|{{ sysinfo.Model }}
-Service tag:|{{ sysinfo.SKU }}
+Service tag:|<a href="https://www.dell.com/support/home/us/en/04/product-support/servicetag/{{ sysinfo.SKU }}">{{ sysinfo.SKU }}</a>
 BIOS Version:|{{ sysinfo.BiosVersion }}
 Memory:|{{ sysinfo.MemorySummary.TotalSystemMemoryGiB|int }}
 Processors:|{{ sysinfo.ProcessorSummary.Count }} x {{ sysinfo.ProcessorSummary.Model }}
 
 {% set interfaces = inventory[host].interfaces %}
 ### Interfaces ({{ interfaces|length }})
-ID | MAC
----|----
+ID | MAC | State
+---|-----|------
 {% for interface in interfaces %}
-{{ interface.Id }}|{{ interface.MACAddress }}
+{{ interface.Id }}|{{ interface.MACAddress }}|{{ interface.get('Status', {}).get('State', 'UNKNOWN') }}
 {% endfor %}
 
 {% set drives = inventory[host].drives %}
 ### Drives ({{ drives|length }})
-ID | Capacity
----|---------
+ID | Capacity | Manufacturer | Model
+---|----------|--------------|------
 {% for drive in drives %}
-|{{ drive.Id }}|{{ drive.CapacityBytes/1024/1024/1024 }}
+|{{ drive.Id }}|{{ drive.CapacityBytes/1024/1024/1024 }}|{{
+drive.Manufacturer }}|{{ drive.Model }}
 {% endfor %}
 
 {% endif %}
